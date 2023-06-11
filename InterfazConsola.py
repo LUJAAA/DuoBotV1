@@ -1,24 +1,15 @@
-# !/usr/bin/python
-# -*- coding: utf-8 -*-
-
 import os
 import pyautogui # Controlar el raton, tomar ss 
 import webbrowser  # Para abrir paginas web
+import time
 from time import sleep # Detener la ejecicion
 from datetime import date # Fecha
 from datetime import datetime # Hora 
 import administracionBaseDeDatos as BD # Base de .
 from plyer import notification # Para mostrar notificaciones
 
-from win32api import (GetModuleFileName, RegCloseKey, RegDeleteValue,
-                      RegOpenKeyEx, RegSetValueEx, RegEnumValue)
-from win32con import (HKEY_LOCAL_MACHINE, HKEY_CURRENT_USER, KEY_WRITE,
-                      KEY_QUERY_VALUE, REG_SZ)
-from winerror import ERROR_NO_MORE_ITEMS
-import pywintypes
-
-
-urlTemporal = "https://www.duolingo.com/stories/en-es-a-date?mode=read&practiceHubStory=library"
+# https://www.duolingo.com/stories/en-es-at-the-supermarket?practiceHubStory=featured
+urlTemporal = "https://www.duolingo.com/stories/en-es-a-date?mode=read&practiceHubStory=featured"
 urlBotPerfil = "https://www.duolingo.com/profile/LUJAV21"
 urlLujaPerfil = "https://www.duolingo.com/profile/LujaXD1"
 tiempoInicio = ""
@@ -57,15 +48,14 @@ def titulo():
     salirMenu = False
     while salirMenu == False:
         os.system('cls')
-        print("""DUOLINGO BOT V1.1""")
+        print("""DUOLINGO BOT V1.2""")
         print("[1] INGRESAR FECHA [1]")
         print("[2] HACER CUENTOS  [2]")
         opcion = int(input())
         if opcion == 1:
             ingresarFecha()
         if opcion == 2:
-            salirMenu = True
-    
+            salirMenu = True   
 def ingresarFecha():
     os.system('cls')
     print("INGRESAR NUEVA FECHA")
@@ -76,12 +66,26 @@ def ingresarFecha():
     IdProgramacion = BD.obtenerlaUltimaProgramacion()
     BD.registrarNuevaFecha(IdProgramacion, fecha,
                            horaInicio, horaFinal, finalizado)
-
 def obtenerPosicionRaton():
     if str(input()) == "p":
         print(pyautogui.position())   
+def notificacionGenerica(mensaje):
+    notification.notify(
+        title='DUO BOT',
+        message=mensaje,
+        app_icon="Imagenes\DuoIco_1.ico")
 
 # para resolver los problemas en cada cuento
+def resuelvePuntosSupensivos(resolviendoProblema):
+    while resolviendoProblema:
+        pyautogui.moveTo(400, 370)
+        pyautogui.click()
+        pyautogui.moveTo(400, 420)
+        pyautogui.click()
+        pyautogui.moveTo(400, 490)
+        pyautogui.click()
+        if str(pyautogui.locateOnScreen("Imagenes\Continuar.png", grayscale=False, confidence=.7)) != "None":
+            resolviendoProblema = False
 def completaLaOracion(resolviendoProblema):
     while resolviendoProblema:
         pyautogui.moveTo(700, 370)
@@ -93,7 +97,7 @@ def completaLaOracion(resolviendoProblema):
         if str(pyautogui.locateOnScreen("Imagenes\Continuar.png", grayscale=False, confidence=.7)) != "None":
             resolviendoProblema=False
 def seleccionaLosPares():
-    sleep(2)
+    sleep(1)
     realizando = True
     while realizando:
         # Primera palabra
@@ -205,15 +209,38 @@ def seleccionaLosPares():
             realizando = False
             pyautogui.press("ENTER")
             sleep(5)
-            finalizar()
-            print("GUARDADO")
-            sleep(1)
-            pyautogui.hotkey("alt", "f4")
             pyautogui.press("ENTER")
+            finalizar("200")
+            print("GUARDADO")  
+            pyautogui.click()
+            pyautogui.hotkey("alt", "f4")
+            sleep(2)
             print("TERMINADO") 
             webbrowser.open(urlTemporal, new=2, autoraise=True)
-            sleep(2)
+            sleep(1)
             pyautogui.press("F11")
+            # espero hasta detectar unos segundos hasta que se cargue la pagina
+            unaVez = False
+            tiempoInicial = time.time()
+            while True:
+                # espero 30 segundos maximo para que cargue la pagina
+                if time.time()-tiempoInicial <= 30 and unaVez == False:
+                    # una vez se ve el cuento, dejo de esperar
+                    if str(pyautogui.locateOnScreen("Imagenes\DetectarEmpezarCuento.png", grayscale=False, confidence=.7)) != "None":
+                        unaVez = True
+                        notificacionGenerica("INICIO Tiempo: "+str(time.time()-tiempoInicial)+" segundos")
+                        break
+                elif time.time()-tiempoInicial > 30:
+                    # cierro la ventana
+                    notificacionGenerica("INICIO Tiempo de espera excedido")
+                    pyautogui.click()
+                    pyautogui.hotkey("alt", "f4")
+                    sleep(1)
+                    webbrowser.open(urlTemporal, new=2, autoraise=True)
+                    sleep(2)
+                    pyautogui.press("F11")
+                    tiempoInicial = time.time()
+
 def formaLaOracion(resolviendoProblema):
     while resolviendoProblema:
         pyautogui.moveTo(400, 430)
@@ -253,13 +280,39 @@ def inicioSesion():
     tiempoInicioF = tiempoInicio.strftime("%H%M%S")
     global ultimaSesion
     ultimaSesion = BD.obtenerUltimaSesion()
-
+    # inicio
+    pyautogui.click()
+    pyautogui.hotkey("alt", "space")
+    pyautogui.press("n")
+    notificacionGenerica("Empezando")
+    sleep(2) 
     # Tomar ss del bot y de Luja 
     # abro microsoft edge porque ahi esta la cuenta de luja
     edge_path = "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe"
     webbrowser.register("edge", None, webbrowser.BackgroundBrowser(edge_path))
     webbrowser.get("edge").open_new_tab(urlLujaPerfil)
-    sleep(10) 
+    tiempoInicial = time.time()
+    # espero hasta detectar se carge la pagina
+    unaVez=False
+    while True:
+        # espero 30 segundos maximo para que cargue la pagina
+        if time.time()-tiempoInicial<=30 and unaVez==False:
+            # una vez se ve el perfil, dejo de esperar
+            if str(pyautogui.locateOnScreen("Imagenes\PerfilLuja.png", grayscale=False, confidence=.7)) != "None":
+                unaVez = True
+                notificacionGenerica("LUJA Tiempo: "+str(time.time()-tiempoInicial)+" segundos")
+                break
+        elif time.time()-tiempoInicial > 30:    
+            # cierro la ventana       
+            notificacionGenerica("LUJA Tiempo de espera excedido")
+            pyautogui.click()
+            pyautogui.hotkey("alt", "f4")
+            sleep(1)
+            # la vuelvo a abrir
+            webbrowser.get("edge").open_new_tab(urlLujaPerfil)
+            # NOTA: EN LUGAR DE BREAK DEBE REINICIARSE EL TIEMPO
+            break
+    sleep(1)
     # tomo, guardo la ss y cierro la ventana
     ssBot = pyautogui.screenshot()
     ssBot.save("C:/DuoBot_Info/SsLuja/Sesion"+str(ultimaSesion) +
@@ -268,7 +321,27 @@ def inicioSesion():
     sleep(1)
     # abro google porque ahi esta la cuenta del bot
     webbrowser.open(urlBotPerfil, new=2, autoraise=True) 
-    sleep(10)
+    tiempoInicial = time.time()
+    unaVez = False
+    while True:
+        # espero 30 segundos maximo para que cargue la pagina
+        if time.time()-tiempoInicial <= 30 and unaVez == False:
+            # una vez se ve el perfil, dejo de esperar
+            if str(pyautogui.locateOnScreen("Imagenes\PerfilBot.png", grayscale=False, confidence=.7)) != "None":
+                unaVez = True
+                notificacionGenerica(
+                    "BOT Tiempo: "+str(time.time()-tiempoInicial)+" segundos")
+                break
+        elif time.time()-tiempoInicial > 30:
+            # cierro la ventana
+            notificacionGenerica("BOT Tiempo de espera excedido")
+            pyautogui.click()
+            pyautogui.hotkey("alt", "f4")
+            sleep(1)
+            # la vuelvo a abrir
+            webbrowser.open(urlBotPerfil, new=2, autoraise=True)
+            break
+    sleep(1)
     # tomo, guardo la ss y cierro la ventana
     ssBot = pyautogui.screenshot()
     ssBot.save("C:/DuoBot_Info/SsBot/Sesion"+str(ultimaSesion) +
@@ -279,7 +352,28 @@ def inicioSesion():
     webbrowser.open(urlTemporal, new=2, autoraise=True)
     sleep(1)
     pyautogui.press("F11")
-def finalizar():
+    # espero hasta detectar unos segundos hasta que se cargue la pagina
+    unaVez = False
+    tiempoInicial = time.time()
+    while True:
+        # espero 30 segundos maximo para que cargue la pagina
+        if time.time()-tiempoInicial <= 30 and unaVez == False:
+            # una vez se ve el cuento, dejo de esperar
+            if str(pyautogui.locateOnScreen("Imagenes\DetectarEmpezarCuento.png", grayscale=False, confidence=.7)) != "None":
+                unaVez = True
+                notificacionGenerica(
+                    "INICIO Tiempo: "+str(time.time()-tiempoInicial)+" segundos")
+                break
+        elif time.time()-tiempoInicial > 30:
+            # cierro la ventana
+            notificacionGenerica("INICIO Tiempo de espera excedido")
+            pyautogui.click()
+            pyautogui.press("F5")
+            sleep(1)
+            tiempoInicial = time.time()
+    
+
+def finalizar(mensaje):
     # Obtengo la fecha
     fecha = date.today()
     fechaFormateada = fecha.strftime("%d/%m/%Y")
@@ -291,8 +385,7 @@ def finalizar():
     IdCuento = BD.obtenerUltimoCuento()
     
     BD.registroActividad(IdCuento, ultimaSesion, "A DATE", tiempoInicioF,
-                         tiempoFinalF, fechaFormateada, "200")
-
+                         tiempoFinalF, fechaFormateada, mensaje)
 def principal():
     ResolviendoCuento = False
     resolviendoProblema = False
@@ -317,8 +410,7 @@ def principal():
             # RESOLVIENDO EL CUENTO #
             #########################
 
-            # Detectar continuar
-            
+            # Detectar continuar       
             if str(pyautogui.locateOnScreen("Imagenes\Continuar.png", grayscale=False, confidence=.7)) != "None":
                 pyautogui.press("ENTER")
                 resolviendoProblema = False
@@ -337,26 +429,19 @@ def principal():
                 formaLaOracion(resolviendoProblema)
 
             # Detectar "SELECCIONA LOS PARES"
-            # seleccionar pares es quien hace el press enter final
+            # "SeleccionarLosPares()" es quien hace el press enter final
             if str(pyautogui.locateOnScreen("Imagenes\Selecciona.png", grayscale=False, confidence=.7)) != "None" and bandera == False:
                 bandera = True
                 ResolviendoCuento=False
                 seleccionaLosPares()
-        
-        
+
+            # Detectar "PUNTOS SUSPENSIVOS" y "¿QUE ACABA DE SUCEDER?"
+            if str(pyautogui.locateOnScreen("Imagenes\puntosSuspensivos.png", grayscale=False, confidence=.7)) != "None" or str(pyautogui.locateOnScreen("Imagenes\QueAcabaDeSuceder.png", grayscale=False, confidence=.7)) != "None" and bandera == False:
+                bandera = True
+                resolviendoProblema = True
+                resuelvePuntosSupensivos(resolviendoProblema)
+            
 principal()
-def notificacion():
-    notification.notify(
-    title='DUO BOT',
-    message='Si cuenta',
-    app_icon="Imagenes\DuoIco_1.ico")
 
 
-
-def principalPrueba():
-    notificacion()
    
-
-
-
-#principalPrueba()
