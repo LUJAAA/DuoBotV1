@@ -8,7 +8,6 @@ from datetime import datetime # Hora
 import administracionBaseDeDatos as BD # Base de .
 from plyer import notification # Para mostrar notificaciones
 
-# https://www.duolingo.com/stories/en-es-at-the-supermarket?practiceHubStory=featured
 urlTemporal = "https://www.duolingo.com/stories/en-es-a-date?mode=read&practiceHubStory=featured"
 urlBotPerfil = "https://www.duolingo.com/profile/LUJAV21"
 urlLujaPerfil = "https://www.duolingo.com/profile/LujaXD1"
@@ -17,7 +16,8 @@ tiempoFinal = ""
 tiempoInicioF = ""
 tiempoFinalF = ""
 ultimaSesion = 0
-
+cantidadDeCuentosAResolver = 1
+cantidadDeCuentosResueltos = 0
 def titulo():
     duoAnsii = """                ⣀⣀⣀⣀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
 ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢠⣶⡟⠋⠋⠉⠉⠛⢶⣄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
@@ -76,6 +76,50 @@ def notificacionGenerica(mensaje):
         app_icon="Imagenes\DuoIco_1.ico")
 
 # para resolver los problemas en cada cuento
+def empezarOtroCuento(mensaje):
+    global cantidadDeCuentosResueltos
+    cantidadDeCuentosResueltos += 1
+    pyautogui.press("ENTER")
+    sleep(5)
+    finalizar(mensaje)
+    pyautogui.click()
+    pyautogui.hotkey("alt", "f4")
+    sleep(1)
+    pyautogui.press("ENTER")
+    sleep(2)
+    print("CUENTO #"+str(cantidadDeCuentosResueltos)+" TERMINADO")
+    if cantidadDeCuentosResueltos < cantidadDeCuentosAResolver:     
+        webbrowser.open(urlTemporal, new=2, autoraise=True)
+        sleep(1)
+        pyautogui.press("F11")
+        # espero hasta detectar unos segundos hasta que se cargue la pagina
+        unaVez = False
+        tiempoInicial = time.time()
+        while True:
+            # espero 30 segundos maximo para que cargue la pagina
+            if time.time()-tiempoInicial <= 30 and unaVez == False:
+                # una vez se ve el cuento, dejo de esperar
+                if str(pyautogui.locateOnScreen("Imagenes\DetectarEmpezarCuento.png", grayscale=False, confidence=.7)) != "None":
+                    unaVez = True
+                    notificacionGenerica(
+                        "INICIO Tiempo: "+str(time.time()-tiempoInicial)+" segundos")
+                    break
+            elif time.time()-tiempoInicial > 30:
+                # cierro la ventana
+                notificacionGenerica("INICIO Tiempo de espera excedido")
+                pyautogui.click()
+                pyautogui.hotkey("alt", "f4")
+                sleep(1)
+                pyautogui.press("ENTER")
+                sleep(1)
+                webbrowser.open(urlTemporal, new=2, autoraise=True)
+                sleep(2)
+                pyautogui.press("F11")
+                tiempoInicial = time.time()
+    else:
+        notificacionGenerica("CANTIDAD DE CUENTOS COMPLETADO")
+        os.sys.exit()
+    
 def resuelvePuntosSupensivos(resolviendoProblema):
     while resolviendoProblema:
         pyautogui.moveTo(400, 370)
@@ -99,6 +143,7 @@ def completaLaOracion(resolviendoProblema):
 def seleccionaLosPares():
     sleep(1)
     realizando = True
+    intentos = 0
     while realizando:
         # Primera palabra
         pyautogui.moveTo(540, 280)
@@ -205,41 +250,14 @@ def seleccionaLosPares():
         pyautogui.click()
         pyautogui.moveTo(900, 530)  # par
         pyautogui.click()
+        intentos += 1
+        if intentos>10:
+            realizando = False
+            empezarOtroCuento("400")
         if str(pyautogui.locateOnScreen("Imagenes\Continuar.png", grayscale=False,  confidence=.7)) != "None":
             realizando = False
-            pyautogui.press("ENTER")
-            sleep(5)
-            pyautogui.press("ENTER")
-            finalizar("200")
-            print("GUARDADO")  
-            pyautogui.click()
-            pyautogui.hotkey("alt", "f4")
-            sleep(2)
-            print("TERMINADO") 
-            webbrowser.open(urlTemporal, new=2, autoraise=True)
-            sleep(1)
-            pyautogui.press("F11")
-            # espero hasta detectar unos segundos hasta que se cargue la pagina
-            unaVez = False
-            tiempoInicial = time.time()
-            while True:
-                # espero 30 segundos maximo para que cargue la pagina
-                if time.time()-tiempoInicial <= 30 and unaVez == False:
-                    # una vez se ve el cuento, dejo de esperar
-                    if str(pyautogui.locateOnScreen("Imagenes\DetectarEmpezarCuento.png", grayscale=False, confidence=.7)) != "None":
-                        unaVez = True
-                        notificacionGenerica("INICIO Tiempo: "+str(time.time()-tiempoInicial)+" segundos")
-                        break
-                elif time.time()-tiempoInicial > 30:
-                    # cierro la ventana
-                    notificacionGenerica("INICIO Tiempo de espera excedido")
-                    pyautogui.click()
-                    pyautogui.hotkey("alt", "f4")
-                    sleep(1)
-                    webbrowser.open(urlTemporal, new=2, autoraise=True)
-                    sleep(2)
-                    pyautogui.press("F11")
-                    tiempoInicial = time.time()
+            empezarOtroCuento("200")
+
 
 def formaLaOracion(resolviendoProblema):
     while resolviendoProblema:
@@ -312,7 +330,7 @@ def inicioSesion():
             webbrowser.get("edge").open_new_tab(urlLujaPerfil)
             # NOTA: EN LUGAR DE BREAK DEBE REINICIARSE EL TIEMPO
             break
-    sleep(1)
+    sleep(2)
     # tomo, guardo la ss y cierro la ventana
     ssBot = pyautogui.screenshot()
     ssBot.save("C:/DuoBot_Info/SsLuja/Sesion"+str(ultimaSesion) +
@@ -341,7 +359,7 @@ def inicioSesion():
             # la vuelvo a abrir
             webbrowser.open(urlBotPerfil, new=2, autoraise=True)
             break
-    sleep(1)
+    sleep(2)
     # tomo, guardo la ss y cierro la ventana
     ssBot = pyautogui.screenshot()
     ssBot.save("C:/DuoBot_Info/SsBot/Sesion"+str(ultimaSesion) +
@@ -371,8 +389,6 @@ def inicioSesion():
             pyautogui.press("F5")
             sleep(1)
             tiempoInicial = time.time()
-    
-
 def finalizar(mensaje):
     # Obtengo la fecha
     fecha = date.today()
@@ -394,8 +410,9 @@ def principal():
     titulo()
                 
     inicioSesion()
+    
     while True:
-
+        
         # Detectar inicio de cuento
         if str(pyautogui.locateOnScreen("Imagenes\DetectarEmpezarCuento.png", grayscale=False, confidence=.7)) != "None" and ResolviendoCuento == False:
             pyautogui.press("ENTER")
